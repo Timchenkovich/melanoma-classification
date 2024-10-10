@@ -222,7 +222,7 @@ model.summary()
 
 model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=["accuracy"])
 
-history = model.fit(training, validation_data=validating, epochs=20, callbacks=callback,
+history = model.fit(training, validation_data=validating, epochs=50, callbacks=callback,
                     verbose=1)
 
 acc = history.history['accuracy']
@@ -244,6 +244,8 @@ plt.plot(epochs, val_loss, 'r', label='Validation Loss')
 plt.title('Training and validation loss')
 plt.legend()
 
+plt.savefig("loss.png")
+
 plt.figure()
 
 plt.plot(epochs, acc, 'b', label='Training Accuracy')
@@ -251,11 +253,12 @@ plt.plot(epochs, val_acc, 'r', label='Validation Accuracy')
 plt.title('Training and validation accuracy')
 plt.legend()
 
-plt.show()
+plt.savefig("accuracy.png")
+
+# plt.show()
 
 evals = model.evaluate(testing, return_dict=True)
 
-print(f"Test precision: {evals['precision']}")
 print(f"Test accuracy: {evals['accuracy']}")
 
 model.save("saved_model.keras")
