@@ -1,10 +1,23 @@
+import os
 import argparse
 parser = argparse.ArgumentParser("train")
 parser.add_argument("dataset_path", help="Path to folder where train and test data is stored.")
 parser.add_argument("-m", "--model-path", help="Path to trained model")
+parser.add_argument("output_dir", help="Path to output dir")
 args = parser.parse_args()
 
 PATH_TO_DATASET = args.dataset_path
+OUTPUT_DIR = args.output_dir
+MODEL_PATH = args.model_path
+
+if os.path.exists(OUTPUT_DIR):
+    print("Output dir already exists")
+    import sys
+    sys.exit()
+
+os.mkdir(OUTPUT_DIR)
+train_log = open(f"{OUTPUT_DIR}/train.log", "a")
+test_log = open(f"{OUTPUT_DIR}/test.log", "a")
 
 import keras
 import tensorflow as tf
@@ -43,46 +56,58 @@ training = get_dataset(train_dir, 0.1, "training")
 validating = get_dataset(train_dir, 0.1, "validation")
 testing = get_dataset(test_dir)
 
-if args.model_path:
-    model = keras.saving.load_model(args.model_path)
+if MODEL_PATH:
+    model = keras.saving.load_model(MODEL_PATH)
 else:
     from get_model import get_model
     model = get_model()
 
 model.summary()
 
-EarlyStop = keras.callbacks.EarlyStopping(start_from_epoch=10, restore_best_weights=True)
+max_epochs = 10
+
+ModelCheckpoint = keras.callbacks.ModelCheckpoint(filepath=f"{OUTPUT_DIR}/checkpoint.keras", monitor="loss", mode="min", save_best_only=True)
 Reduce_LR = keras.callbacks.ReduceLROnPlateau(monitor='accuracy', verbose=2, factor=0.5)
-callback = [EarlyStop, Reduce_LR]
+callbacks = [ModelCheckpoint, Reduce_LR]
 
-history = model.fit(training, validation_data=validating, epochs=7, callbacks=callback,
+for i in range(max_epochs):
+  history = model.fit(training, validation_data=validating, callbacks=callbacks,
                     verbose=1)
+  evals = model.evaluate(testing, return_dict=True)
 
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-loss = history.history['loss']
-val_loss = history.history['val_loss']
+  test_log.write(f"{evals['accuracy']}\n")
+  train_log.write(f"{i} {history.history['accuracy'][0]} {history.history['val_accuracy'][0]}\n")
+  test_log.flush()
+  train_log.flush()
 
-epochs = range(len(acc))
+test_log.close()
+train_log.close()
 
-plt.plot(epochs, loss, 'b', label='Training Loss')
-plt.plot(epochs, val_loss, 'r', label='Validation Loss')
-plt.title('Training and validation loss')
-plt.legend()
+#acc = history.history['accuracy']
+#val_acc = history.history['val_accuracy']
+#loss = history.history['loss']
+#val_loss = history.history['val_loss']
 
-plt.savefig("loss.png")
+#epochs = range(len(acc))
 
-plt.figure()
+#plt.plot(epochs, loss, 'b', label='Training Loss')
+#plt.plot(epochs, val_loss, 'r', label='Validation Loss')
+#plt.title('Training and validation loss')
+#plt.legend()
 
-plt.plot(epochs, acc, 'b', label='Training Accuracy')
-plt.plot(epochs, val_acc, 'r', label='Validation Accuracy')
-plt.title('Training and validation accuracy')
-plt.legend()
+#plt.savefig("loss.png")
 
-plt.savefig("accuracy.png")
+#plt.figure()
 
-evals = model.evaluate(testing, return_dict=True)
+#plt.plot(epochs, acc, 'b', label='Training Accuracy')
+#plt.plot(epochs, val_acc, 'r', label='Validation Accuracy')
+#plt.title('Training and validation accuracy')
+#plt.legend()
 
-print(f"Test accuracy: {evals['accuracy']}")
+#plt.savefig("accuracy.png")
 
-model.save("model.keras")
+#evals = model.evaluate(testing, return_dict=True)
+
+#print(f"Test accuracy: {evals['accuracy']}")
+
+#model.save("model.keras")
